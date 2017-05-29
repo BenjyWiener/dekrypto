@@ -8,11 +8,31 @@ A Krypto puzzle solver written in Haskell.
 ## Compile
 <pre><b>$ </b>ghc --make dekrypto.hs</pre>
 
-## Example Usage
+## Usage
+- **\*nix**:  <pre><b>... $</b> ./dekrypto [-H|-h]</pre>
+
+- **Windows**:  <pre><b>C:\\...></b> dekrypto.exe [-H|-h]</pre>
+
 <pre>
-<b>$</b> ./dekrypto
-<b>Cards (separated by spaces): </b>7 8 3 4 12
-<b>Goal: </b>22
-<b>7 + (3 * (8 - (12 / 4))) = 22</b>
-<b>Solved in 0.191022 seconds</b>
+-H : Use house rules (allow intermediate results to be negative and/or
+     fractional)
+-h : Show the help message
+</pre>
+
+###### Examples
+
+<pre>
+<b>... $</b> ./dekrypto
+<b>Cards (separated by spaces): </b>1 4 7 10 13
+<b>Goal: </b>9
+<b>1 + (4 + (7 - (13 - 10))) = 9</b>
+<b>Solved in 0.01258 seconds</b>
+</pre>
+
+<pre>
+<b>... $</b> ./dekrypto -H
+<b>Cards (separated by spaces): </b>1 4 7 10 13
+<b>Goal: </b>9
+<b>1 + (4 + (7 + (10 - 13))) = 9</b>
+<b>Solved in 0.000326 seconds</b>
 </pre>
