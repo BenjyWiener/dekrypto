@@ -1,7 +1,8 @@
-import Data.List
 import Permutation
 import System.IO
 import System.Exit
+import System.Environment
+import Data.Time
 import qualified Data.Char as Char
 
 
@@ -14,22 +15,23 @@ data ExprTree = ExprLeaf Double | ExprTree { branch1 :: ExprTree
                                            , operator :: Operator
                                            }
 
-instance Eq ExprTree where
-    (ExprLeaf _) == (ExprTree _ _ _) = False
-    (ExprTree _ _ _) == (ExprLeaf _) = False
-    (ExprLeaf x) == (ExprLeaf y) = x == y
-    (ExprTree t1 t2 op1) == (ExprTree t3 t4 op2)
-        | (t1,t2,op1) == (t3,t4,op2) = True
-        | (op1 == op2) && (commutative op1) && (t1 == t4) && (t2 == t3) = True
-        | otherwise = False
-
 instance Show ExprTree where
     show (ExprLeaf x) = show $ floor x
-    show (ExprTree t1 t2 op) = "(" ++ (show t1) ++ (show op) ++ (show t2) ++ ")" 
+    show (ExprTree l r op) = "(" ++ (show l) ++ (show op) ++ (show r) ++ ")" 
 
 evaluate :: ExprTree -> Double
 evaluate (ExprLeaf x) = x
-evaluate (ExprTree t1 t2 op) = use op (evaluate t1) (evaluate t2)
+evaluate (ExprTree l r op) = use op (evaluate l) (evaluate r)
+
+isInt :: RealFrac a => a -> Bool
+isInt x = fromInteger (round x) == x
+
+-- Tournament rules don't allow fractions or negative numbers at any point
+evaluateTourn :: ExprTree -> Double
+evaluateTourn (ExprLeaf x) = x
+evaluateTourn (ExprTree l r op) = let lVal = evaluateTourn l
+                                      rVal = evaluateTourn r
+                                  in  if (isInt lVal) && isInt (rVal) && (lVal >= 0) && (rVal >= 0) then use op lVal rVal else 0/0
 
 data Operator = Add | Subtract | Multiply | Divide deriving (Eq, Enum)
 
@@ -38,11 +40,6 @@ use Add = (+)
 use Subtract = (-)
 use Multiply = (*)
 use Divide = (/)
-
-commutative :: Operator -> Bool
-commutative Add = True
-commutative Multiply = True
-commutative _ = False
 
 instance Show Operator where
     show Add = " + "
@@ -54,25 +51,41 @@ instance Show Operator where
 expressions :: [Double] -> [ExprTree]
 expressions [] = []
 expressions [x] = [ExprLeaf x]
-expressions xs@[_,_] = [ExprTree (ExprLeaf x) (ExprLeaf y) f | [x,y] <- rotate xs, f <- [Add .. Divide]]
+expressions xs@[_,_] = [ExprTree (ExprLeaf x) (ExprLeaf y) op | [x,y] <- rotate xs, op <- [Add ..]]
 expressions xs = let halves = [splitAt n ys | n <- [1..length xs - 1], ys <- permute xs]
-                 in  nub [ExprTree t1 t2 op | (ys,zs) <- halves, t1 <- expressions ys, t2 <- expressions zs, op <- [Add .. Divide]]
+                 in  [ExprTree l r op | (ys,zs) <- halves, l <- expressions ys, r <- expressions zs, op <- [Add ..]]
 
-solve :: Puzzle -> [String]
-solve (Puzzle cards goal) = [init . tail $ show expr | expr <- expressions cards, evaluate expr == goal]
+solve :: Puzzle -> [ExprTree]
+solve (Puzzle cards goal) = [expr | expr <- expressions cards, evaluate expr == goal]
+
+-- See note to `evaluateTourn`
+solveTourn :: Puzzle -> [ExprTree]
+solveTourn (Puzzle cards goal) = [expr | expr <- expressions cards, evaluateTourn expr == goal]
 
 prompt :: String -> IO String
 prompt msg = do putStr msg
                 hFlush stdout
                 getLine
 
-main = do cardsString <- prompt "Cards (separated by spaces): "
+displayHelp :: IO ()
+displayHelp = putStrLn "\nusage: dekrypto [-H|-h]\n\
+                       \\n\
+                       \  -H : Use house rules (allow intermediate results to be negative and/or\n\
+                       \       fractional)\n\
+                       \  -h : Show this help message"
+
+main = do args <- getArgs
+          if "-h" `elem` args || "-?" `elem` args then displayHelp >> exitSuccess else return ()
+          cardsString <- prompt "Cards (separated by spaces): "
           let cardStrings = words cardsString
           if not $ all (all Char.isDigit) cardStrings then die "Error: Cards must be integers separated by spaces." else return '\NUL'
           goalString <- prompt "Goal: "
           if not $ all Char.isDigit goalString then die "Error: Goal must be an integer." else return '\NUL'
+          start <- getCurrentTime
           let cards = map read cardStrings :: [Double]
           let goal = read goalString :: Double
           let puzzle = Puzzle cards goal
-          let solutions = solve puzzle
-          putStr $ if not $ null solutions then head solutions else "No solutions."
+          let solutions = (if "-H" `elem` args then solve else solveTourn) puzzle
+          putStrLn $ if not $ null solutions then (init . tail . show . head) solutions ++ " = " ++ (show $ floor goal) else "No solutions."
+          end <- getCurrentTime
+          putStrLn $ "Solved in " ++ (init . show $ diffUTCTime end start) ++ " seconds"
