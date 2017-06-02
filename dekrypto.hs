@@ -6,36 +6,36 @@ import Data.Time
 import qualified Data.Char as Char
 
 
-data Puzzle = Puzzle { cards :: [Double]
-                     , goal :: Double
+data Puzzle = Puzzle { cards :: [Int]
+                     , goal :: Int
                      } deriving (Show)
 
-data ExprTree = ExprLeaf Double | ExprTree { branch1 :: ExprTree
-                                           , branch2 :: ExprTree
-                                           , operator :: Operator
-                                           }
+data Expression = Term Int | Expression { operator :: Operator
+                                        , branch1 :: Expression
+                                        , branch2 :: Expression
+                                        }
 
-instance Show ExprTree where
-    show (ExprLeaf x) = show $ floor x
-    show (ExprTree l r op) = "(" ++ (show l) ++ (show op) ++ (show r) ++ ")" 
+instance Show Expression where
+    show (Term x) = show x
+    show (Expression op l r) = "(" ++ (show l) ++ (show op) ++ (show r) ++ ")" 
 
-evaluate :: ExprTree -> Double
-evaluate (ExprLeaf x) = x
-evaluate (ExprTree l r op) = use op (evaluate l) (evaluate r)
+evaluate :: Expression -> Double
+evaluate (Term x) = fromIntegral x
+evaluate (Expression op l r) = use op (evaluate l) (evaluate r)
 
-isInt :: RealFrac a => a -> Bool
-isInt x = fromInteger (round x) == x
+isInt :: Real a => a -> Bool
+isInt x = toRational (round $ toRational x) == toRational x
 
 -- Tournament rules don't allow fractions or negative numbers at any point
-evaluateTourn :: ExprTree -> Double
-evaluateTourn (ExprLeaf x) = x
-evaluateTourn (ExprTree l r op) = let lVal = evaluateTourn l
-                                      rVal = evaluateTourn r
-                                  in  if (isInt lVal) && isInt (rVal) && (lVal >= 0) && (rVal >= 0) then use op lVal rVal else 0/0
+evaluateTourn :: Expression -> Double
+evaluateTourn (Term x) = fromIntegral x
+evaluateTourn (Expression op l r) = let lVal = evaluateTourn l
+                                        rVal = evaluateTourn r
+                                    in  if (isInt lVal) && isInt (rVal) && (lVal >= 0) && (rVal >= 0) then use op lVal rVal else (0/0 :: Double)
 
 data Operator = Add | Subtract | Multiply | Divide deriving (Eq, Enum)
 
-use :: Fractional a => Operator -> a -> a -> a
+use :: Operator -> Double -> Double -> Double
 use Add = (+)
 use Subtract = (-)
 use Multiply = (*)
@@ -48,19 +48,19 @@ instance Show Operator where
     show Divide = " / "
 
 
-expressions :: [Double] -> [ExprTree]
+expressions :: [Int] -> [Expression]
 expressions [] = []
-expressions [x] = [ExprLeaf x]
-expressions xs@[_,_] = [ExprTree (ExprLeaf x) (ExprLeaf y) op | [x,y] <- rotate xs, op <- [Add ..]]
+expressions [x] = [Term x]
+expressions xs@[_,_] = [Expression op (Term x) (Term y) | [x,y] <- rotate xs, op <- [Add ..]]
 expressions xs = let halves = [splitAt n ys | n <- [1..length xs - 1], ys <- permute xs]
-                 in  [ExprTree l r op | (ys,zs) <- halves, l <- expressions ys, r <- expressions zs, op <- [Add ..]]
+                 in  [Expression op l r | (ys,zs) <- halves, l <- expressions ys, r <- expressions zs, op <- [Add ..]]
 
-solve :: Puzzle -> [ExprTree]
-solve (Puzzle cards goal) = [expr | expr <- expressions cards, evaluate expr == goal]
+solve :: Puzzle -> [Expression]
+solve (Puzzle cards goal) = [expr | expr <- expressions cards, evaluate expr == fromIntegral goal]
 
 -- See note to `evaluateTourn`
-solveTourn :: Puzzle -> [ExprTree]
-solveTourn (Puzzle cards goal) = [expr | expr <- expressions cards, evaluateTourn expr == goal]
+solveTourn :: Puzzle -> [Expression]
+solveTourn (Puzzle cards goal) = [expr | expr <- expressions cards, evaluateTourn expr == fromIntegral goal]
 
 prompt :: String -> IO String
 prompt msg = do putStr msg
@@ -82,10 +82,10 @@ main = do args <- getArgs
           goalString <- prompt "Goal: "
           if not $ all Char.isDigit goalString then die "Error: Goal must be an integer." else return '\NUL'
           start <- getCurrentTime
-          let cards = map read cardStrings :: [Double]
-          let goal = read goalString :: Double
-          let puzzle = Puzzle cards goal
-          let solutions = (if "-H" `elem` args then solve else solveTourn) puzzle
-          putStrLn $ if not $ null solutions then (init . tail . show . head) solutions ++ " = " ++ (show $ floor goal) else "No solutions."
+          let cards = map read cardStrings :: [Int]
+              goal = read goalString :: Int
+              puzzle = Puzzle cards goal
+              solutions = (if "-H" `elem` args then solve else solveTourn) puzzle
+          putStrLn $ if not $ null solutions then (init . tail . show . head) solutions ++ " = " ++ (show goal) else "No solutions."
           end <- getCurrentTime
           putStrLn $ "Solved in " ++ (init . show $ diffUTCTime end start) ++ " seconds"
