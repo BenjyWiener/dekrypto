@@ -9,9 +9,9 @@ A Krypto puzzle solver written in Haskell.
 <pre><b>$ </b>ghc -O2 --make dekrypto</pre>
 
 ## Usage
-- **\*nix**:  <pre><b>... $</b> ./dekrypto [-H|-h]</pre>
+- **\*nix**:  <pre><b>$ </b>./dekrypto [-H|-h]</pre>
 
-- **Windows**:  <pre><b>C:\\...></b> dekrypto.exe [-H|-h]</pre>
+- **Windows**:  <pre><b>> </b>dekrypto.exe [-H|-h]</pre>
 
 <pre>
 -H : Use house rules (allow intermediate results to be negative and/or
