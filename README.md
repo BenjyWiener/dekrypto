@@ -6,7 +6,7 @@ A Krypto puzzle solver written in Haskell.
 > – [Wikipedia](https://en.wikipedia.org/wiki/Krypto_(game))
 
 ## Compile
-<pre><b>$ </b>ghc --make dekrypto</pre>
+<pre><b>$ </b>ghc -O2 --make dekrypto</pre>
 
 ## Usage
 - **\*nix**:  <pre><b>... $</b> ./dekrypto [-H|-h]</pre>
