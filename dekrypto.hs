@@ -1,8 +1,8 @@
-import Permutation
 import System.IO
 import System.Exit
 import System.Environment
 import Data.Time
+import qualified Data.List as List
 import qualified Data.Char as Char
 
 
@@ -47,12 +47,14 @@ instance Show Operator where
     show Multiply = " * "
     show Divide = " / "
 
+rotate :: [a] -> [[a]]
+rotate xs = scanl (\(y:ys) _ -> ys ++ [y]) xs [2..length xs]
 
 expressions :: [Int] -> [Expression]
 expressions [] = []
 expressions [x] = [Term x]
 expressions xs@[_,_] = [Expression op (Term x) (Term y) | [x,y] <- rotate xs, op <- [Add ..]]
-expressions xs = let halves = [splitAt n ys | n <- [1..length xs - 1], ys <- permute xs]
+expressions xs = let halves = [splitAt n ys | n <- [1..length xs - 1], ys <- List.permutations xs]
                  in  [Expression op l r | (ys,zs) <- halves, l <- expressions ys, r <- expressions zs, op <- [Add ..]]
 
 solve :: Puzzle -> [Expression]
